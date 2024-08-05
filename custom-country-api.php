@@ -3,7 +3,7 @@
 Plugin Name: Custom Country API
 Description: Provides a REST API endpoint to retrieve countries and their cities.
 Version: 1.0
-Author: Your Name
+Author: Bakry Abdelsalam
 */
 
 if ( ! defined( 'ABSPATH' ) ) {
