@@ -23,9 +23,13 @@ function get_wc_countries_data( WP_REST_Request $request ) {
     }
 
     $country_code_filter = $request->get_param('country_code');
+    $city_name_filter = $request->get_param('city_name');
+    $district_name_filter = $request->get_param('district_name');
 
     $wc_countries = new WC_Countries();
     $countries = $wc_countries->get_countries();
+	
+	
     // Define cities data
     $cities = array();
     // Cities for Bahrain
@@ -622,6 +626,8 @@ function get_wc_countries_data( WP_REST_Request $request ) {
 
     $data = array();
 
+
+
     foreach ($countries as $country_code => $country_name) {
         if ($country_code_filter && $country_code_filter !== $country_code) {
             continue;
@@ -632,14 +638,51 @@ function get_wc_countries_data( WP_REST_Request $request ) {
         );
 
         if (!empty($cities[$country_code])) {
-            $country_data['cities'] = $cities[$country_code];
+            if ($city_name_filter) {
+                $filtered_cities = array_filter($cities[$country_code], function($city) use ($city_name_filter) {
+                    return strpos($city, $city_name_filter) !== false;
+                });
+                if (!empty($filtered_cities)) {
+                    $country_data['cities'] = array_values($filtered_cities); // Re-index the array
+                }
+            } else {
+                $country_data['cities'] = $cities[$country_code];
+            }
         }
 
         if (!empty($districts[$country_code])) {
-            $country_data['districts'] = $districts[$country_code];
+            if ($city_name_filter) {
+                $filtered_districts = array();
+                foreach ($districts[$country_code] as $city => $district_list) {
+                    if (strpos($city, $city_name_filter) !== false) {
+                        if ($district_name_filter) {
+                            $filtered_district_list = array_filter($district_list, function($district) use ($district_name_filter) {
+                                return strpos($district, $district_name_filter) !== false;
+                            });
+                            if (!empty($filtered_district_list)) {
+                                $filtered_districts[$city] = array_values($filtered_district_list); // Re-index the array
+                            }
+                        } else {
+                            $filtered_districts[$city] = $district_list;
+                        }
+                    }
+                }
+                if (!empty($filtered_districts)) {
+                    $country_data['districts'] = $filtered_districts;
+                }
+            } else {
+                $country_data['districts'] = $districts[$country_code];
+            }
         }
 
-        $data[$country_code] = $country_data;
+        if (!empty($country_data['cities']) || !empty($country_data['districts']) || !isset($cities[$country_code]) && !isset($districts[$country_code])) {
+            $data[$country_code] = $country_data;
+        }
+    }
+
+    // Return only the filtered data for the specified country if the country code is provided
+    if ($country_code_filter) {
+        return rest_ensure_response(array($country_code_filter => $data[$country_code_filter]));
     }
 
     return rest_ensure_response($data);
